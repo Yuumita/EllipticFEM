@@ -1,7 +1,7 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 
 template<typename Tp>
 using VectorX = Eigen::Matrix<Tp, Eigen::Dynamic, 1>;

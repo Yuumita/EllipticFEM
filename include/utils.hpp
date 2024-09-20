@@ -5,7 +5,7 @@
 #include <cassert>
 
 
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include "types.h"
 
 /// @brief Describes the linear function L(x) = coeffs^T * x + constant
@@ -67,8 +67,51 @@ public:
 /// @return The function (lf; at)(x) = lf(at(x)).
 template <typename Tp>
 LinearFunction<Tp> compose_affine_linear(const AffineTransformation<Tp> &at, const LinearFunction<Tp> &lf) {
-    return LinearFunction<Tp>(at.A.T * lf.coeffs, lf.coeffs.T * at.b + lf.constant);
+    return LinearFunction<Tp>(at.A.transpose() * lf.coeffs, lf.coeffs.transpose() * at.b + lf.constant);
 }
 
+
+template <typename Tp>
+class BilinearForm {
+private: 
+    MatrixX<Tp> B;
+public:
+    BilinearForm();
+    BilinearForm(MatrixX<Tp> B_) : B(B_) {}
+    Tp operator()(const VectorX<Tp> &x, const VectorX<Tp> &y) const {
+        return (x.transpose() * B) * y;
+    }
+};
+
+template <typename Tp>
+class LinearForm {
+private: 
+    VectorX<Tp> L_T;
+public:
+    LinearForm();
+    LinearForm(const VectorX<Tp> &L_) : L_T(L_.transpose()) {}
+    Tp operator()(const VectorX<Tp> &x) const {
+        return L_T * x;
+    }
+};
+
+template <typename Tp, int D>
+Tp bilinear_quadrature_simplex(const BilinearForm<Tp> &B, const LinearFunction<Tp> &f, const LinearFunction<Tp> &g, const Element<Tp, D> &S) {
+    VectorX<Tp> c = S.get_centroid();
+    return S.get_volume() * B(f.gradient(c), g.gradient(c));
+}
+
+template <typename Tp, int D>
+Tp linear_quadrature_simplex(const LinearForm<Tp> &L, const LinearFunction<Tp> &f, const Element<Tp, D> &S) {
+    VectorX<Tp> c = S.get_centroid();
+    return S.get_volume() * L(f(c));
+}
+
+template <typename Tp>
+Tp factorial(size_t n) {
+    static std::vector<Tp> _fact(1, Tp(1));
+    while(_fact.size() <= n) _fact.push_back(_fact.back() * Tp(_fact.size()));
+    return _fact[n];
+}
 
 #endif /* UTILS_HPP */
