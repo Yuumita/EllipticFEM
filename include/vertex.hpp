@@ -14,17 +14,19 @@ class Element;
 template <typename Tp, int D>
 class Vertex {
 private:
-    // size_t index;
-    // std::vector<Element<Tp, D>*> elements;
+    int index;
     VectorX<Tp> coords;
+    // std::vector<Element<Tp, D>*> elements;
 public:
     Vertex();
-    Vertex(const Tp &v0) {
+    Vertex(const Tp &v0, const int _index): index(_index) {
         coords.resize(D);
         for(int i = 0; i < D; i++) coords[i] = v0;
     }
-    Vertex(const VectorX<Tp> &p);
+    Vertex(const VectorX<Tp> &p): coords(p) {}
+    Vertex(const VectorX<Tp> &p, const int _index): coords(p), index(_index) {}
 
+    int get_index()  { return index; }
     VectorX<Tp> get_coords() { return coords; }
 };
 

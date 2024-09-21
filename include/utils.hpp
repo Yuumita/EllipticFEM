@@ -12,10 +12,9 @@
 /// @tparam Tp The scalar type
 template <typename Tp>
 class LinearFunction {
-private:
+public:
     VectorX<Tp> coeffs;
     Tp constant;
-public:
     LinearFunction(const Tp constant_) : coeffs(0), constant(constant_) {}
     LinearFunction(const std::vector<Tp> coeffs_) : coeffs(coeffs_), constant(0) {}
     LinearFunction(const std::vector<Tp> coeffs_, const Tp constant_) : coeffs(coeffs_), constant(constant_) {}
@@ -40,10 +39,10 @@ public:
 /// @tparam Tp The scalar type
 template <typename Tp>
 class AffineTransformation {
-private:
+public:
     MatrixX<Tp> A;
     VectorX<Tp> b;
-public:
+
     AffineTransformation();
     AffineTransformation(MatrixX<Tp> A_, VectorX<Tp> b_) : A(A_), b(b_) {
         assert(A.rows() == A.cols() && A.rows() == b.rows());
@@ -73,9 +72,8 @@ LinearFunction<Tp> compose_affine_linear(const AffineTransformation<Tp> &at, con
 
 template <typename Tp>
 class BilinearForm {
-private: 
-    MatrixX<Tp> B;
 public:
+    MatrixX<Tp> B;
     BilinearForm();
     BilinearForm(MatrixX<Tp> B_) : B(B_) {}
     Tp operator()(const VectorX<Tp> &x, const VectorX<Tp> &y) const {
