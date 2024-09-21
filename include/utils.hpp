@@ -70,40 +70,44 @@ LinearFunction<Tp> compose_affine_linear(const AffineTransformation<Tp> &at, con
 }
 
 
-template <typename Tp>
+template <typename Tp, int D>
 class BilinearForm {
+private: 
+    std::function<MatrixX<Tp>(const VectorX<Tp>&)> Bf;
 public:
-    MatrixX<Tp> B;
     BilinearForm();
-    BilinearForm(MatrixX<Tp> B_) : B(B_) {}
-    Tp operator()(const VectorX<Tp> &x, const VectorX<Tp> &y) const {
-        return (x.transpose() * B) * y;
+    BilinearForm(std::function<MatrixX<Tp>(const VectorX<Tp>&)> _Bf) : Bf(_Bf) {}
+    Tp operator()(const LinearFunction<Tp> &f, const LinearFunction<Tp> &g, const Element<Tp, D> &element) const {
+        Tp avg = Tp(0);
+        for(std::pair<VectorX<Tp>, Tp> &p: element.get_quadrature_points()) {
+            MatrixX<Tp> B = Bf ? Bf(p.first) : MatrixX<Tp>::Identity(D, D); 
+            avg += p.second * (f.gradient(p.first).transpose() * B * g.gradient(p.first));
+        }
+        return avg * element.get_volume();
+    }
+    MatrixX<Tp> operator()(const VectorX<Tp> &x) const {
+        return Bf(x);
     }
 };
 
-template <typename Tp>
+template <typename Tp, int D>
 class LinearForm {
 private: 
-    VectorX<Tp> L_T;
+    std::function<Tp(const VectorX<Tp>&)> Lf;
 public:
     LinearForm();
-    LinearForm(const VectorX<Tp> &L_) : L_T(L_.transpose()) {}
+    LinearForm(std::function<Tp(const VectorX<Tp>&)> _Lf) : Lf(_Lf) {}
+    Tp operator()(const LinearFunction<Tp> &f, const Element<Tp, D> &element) const {
+        Tp avg = Tp(0);
+        for(std::pair<VectorX<Tp>, Tp> &p: element.get_quadrature_points()) {
+            avg += p.second * Lf(p.first) * f(p.first);
+        }
+        return avg * element.get_volume();
+    }
     Tp operator()(const VectorX<Tp> &x) const {
-        return L_T * x;
+        return Lf(x);
     }
 };
-
-template <typename Tp, int D>
-Tp bilinear_quadrature_simplex(const BilinearForm<Tp> &B, const LinearFunction<Tp> &f, const LinearFunction<Tp> &g, const Element<Tp, D> &S) {
-    VectorX<Tp> c = S.get_centroid();
-    return S.get_volume() * B(f.gradient(c), g.gradient(c));
-}
-
-template <typename Tp, int D>
-Tp linear_quadrature_simplex(const LinearForm<Tp> &L, const LinearFunction<Tp> &f, const Element<Tp, D> &S) {
-    VectorX<Tp> c = S.get_centroid();
-    return S.get_volume() * L(f(c));
-}
 
 template <typename Tp>
 Tp factorial(size_t n) {

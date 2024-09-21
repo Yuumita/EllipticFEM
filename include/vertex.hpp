@@ -28,6 +28,11 @@ public:
 
     int get_index()  { return index; }
     VectorX<Tp> get_coords() { return coords; }
+
+
+    Tp &coefRef(size_t i)    const { return coords[i]; }
+    Tp &operator[](size_t i) const { return coords[i]; }
+
 };
 
 

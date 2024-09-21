@@ -24,7 +24,8 @@ private:
 
     VectorX<Tp> centroid;
     Tp volume;
-    bool built = false;
+    bool built_data = false;
+    static Element* master_simplex = nullptr;
 
 public:
     Element() {}
@@ -33,13 +34,17 @@ public:
 
     /// @return Volume of the d-simplex given by vertices[0...d] in d-dimensional space.
     Tp get_volume() const {
-        if(!built) build();
+        if(!built_data) build_data();
         return volume;
     }
 
     VectorX<Tp> get_centroid() const {
-        if(!built) build();
+        if(!built_data) build_data();
         return centroid;
+    }
+
+    std::vector<std::pair<VectorX<Tp>, Tp>> get_quadrature_points() {
+        return {{get_centroid(), 1}};
     }
 
     int get_index() { return index; }
@@ -47,7 +52,7 @@ public:
     LinearFunction<Tp> &get_function(size_t i) { return funcs[i]; }
 
 
-    void build() {
+    void build_data() {
         MatrixX<Tp> V(D, D);
         VectorX<Tp> v0 = vertices[0]->get_coords();
         for(int i = 0; i < D; i++) {
@@ -61,23 +66,24 @@ public:
         }
     }
 
-    void build(std::vector<Vertex<Tp, D>*> nvertices) {
+    void build_data(std::vector<Vertex<Tp, D>*> nvertices) {
         this->vertices = nvertices;
-        build();
+        build_data();
     }
 
 
-    static Element* master_simplex = nullptr;
-    static Element get_master_simplex() {
-        if(master_simplex != nullptr) return *master_simplex;
-        Element<Tp, D> *master_simplex = new Element<Tp, D>;
+    static Element& get_master_simplex() {
+        if(master_simplex != nullptr) 
+            return *master_simplex;
+
+        master_simplex = new Element<Tp, D>;
         master_simplex->parent = nullptr;
 
         master_simplex->vertices.resize(D+1);
         master_simplex->vertices[0] = new Vertex<Tp, D>(0);
         for(int i = 1; i <= D; i++) {
             Vertex<Tp, D> *vertex = new Vertex<Tp, D>(0);
-            (*vertex)[i] = Tp(1);
+            vertex->coefRef(i) = Tp(1);
             master_simplex->vertices[i] = vertex;
         }
 
