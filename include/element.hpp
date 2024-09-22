@@ -44,7 +44,22 @@ public:
     }
 
     std::vector<std::pair<Vector<Tp, D>, Tp>> get_quadrature_points() const {
-        return {{get_centroid(), Tp(1)}};
+        return get_quadrature_points_1();
+    }
+
+    std::vector<std::pair<Vector<Tp, D>, Tp>> get_quadrature_points_1() const {
+        return {{get_centroid(), get_volume()}};
+    }
+
+    std::vector<std::pair<Vector<Tp, D>, Tp>> get_quadrature_points_2() const {
+        std::vector<std::pair<Vector<Tp, D>, Tp>> ret(D + 2);
+        Vector<Tp, D> c = get_centroid();
+        for(int i = 0; i <= D; i++) {
+            Vector<Tp, D> x = (vertices[i]->get_coords() + c) / Tp(2);
+            ret[i] = {x, get_volume() / (D + 2)};
+        }
+        ret[D + 1] = {c, get_volume() / (D + 2)};
+        return ret;
     }
 
     int get_index() { return index; }

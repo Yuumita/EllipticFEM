@@ -84,7 +84,7 @@ public:
             Matrix<Tp, D, D> B = Bf ? Bf(p.first) : Matrix<Tp, D, D>::Identity(); 
             avg += p.second * Tp((f.gradient(p.first).transpose() * B) * g.gradient(p.first));
         }
-        return avg * element.get_volume();
+        return avg;
     }
     Matrix<Tp, D, D> operator()(const Vector<Tp, D> &x) const { return Bf(x); }
 };
@@ -98,11 +98,10 @@ public:
     LinearForm(std::function<Tp(const Vector<Tp, D>&)> _Lf) : Lf(_Lf) {}
     Tp operator()(const LinearFunction<Tp, D> &f, const Element<Tp, D> &element) const {
         Tp avg = Tp(0); 
-
         for(std::pair<Vector<Tp, D>, Tp> &p: element.get_quadrature_points()) {
             avg += p.second * Lf(p.first) * f(p.first);
         }
-        return avg * element.get_volume();
+        return avg;
     }
     Tp operator()(const Vector<Tp, D> &x) const { return Lf(x); }
 };

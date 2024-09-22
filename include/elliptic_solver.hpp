@@ -6,15 +6,6 @@
 
 template <typename Tp, int D>
 class EllipticSolver {
-public:
-    EllipticSolver(Mesh<Tp, D>* _mesh) : mesh(_mesh) {}
-    EllipticSolver(Mesh<Tp, D>* _mesh, const BilinearForm<Tp, D> &_B, const LinearForm<Tp ,D> &_L) 
-        : mesh(_mesh), B(_B), L(_L) {}
-
-    void assemble();
-    // void apply_boundary_conditions();
-    VectorX<Tp> solve();
-
 private:
     BilinearForm<Tp, D> B;
     LinearForm<Tp, D>   L;
@@ -26,6 +17,18 @@ private:
     VectorX<Tp> rhs;  
     VectorX<Tp> solution;
 
+public:
+
+    EllipticSolver(Mesh<Tp, D>* _mesh) : mesh(_mesh) {}
+    EllipticSolver(Mesh<Tp, D>* _mesh, const BilinearForm<Tp, D> &_B, const LinearForm<Tp ,D> &_L) 
+        : mesh(_mesh), B(_B), L(_L) {}
+
+    void assemble();
+    // void apply_boundary_conditions();
+    VectorX<Tp> solve();
+
+    Eigen::SparseMatrix<Tp> get_stiffness() { return stiffness_matrix; };
+    VectorX<Tp> get_rhs() { return rhs; };
 };
 
 

@@ -15,7 +15,8 @@ private:
     std::vector<Element<Tp, D>*> elements;
 
 public:
-    static Mesh get_unit_cube_triangulation();
+    static Mesh<Tp, D> get_unit_cube_triangulation();
+    static Mesh<Tp, D> get_3d_unit_cube_triangulation(Tp h = 1);
 
     Vertex<Tp, D> *get_vertex(size_t i)   { return vertices[i]; }
     std::vector<Vertex<Tp, D>*> &get_vertices()   { return vertices; }
@@ -26,6 +27,69 @@ public:
     size_t get_elements_size()   { return elements.size(); }
 
 };
+
+template <typename Tp, int D>
+Mesh<Tp, D> Mesh<Tp, D>::get_3d_unit_cube_triangulation(Tp h) {
+    Mesh<Tp, 3> mesh;
+
+    int k = static_cast<int>(1 / h);
+
+    for(int x = 0; x <= k; x++) {
+        for(int y = 0; y <= k; y++) {
+            for(int z = 0; z <= k; z++) {
+                Vector<Tp, 3> coords;
+                coords[0] = x * h;
+                coords[1] = y * h;
+                coords[2] = z * h;
+                mesh.vertices.push_back(new Vertex<Tp, 3>(coords, x * (k+1) * (k+1) + y * (k+1) + z));
+
+            }
+        }
+    }
+
+
+    Element<Tp, 3> master = Element<Tp, 3>::get_master_simplex();
+
+    for(int x = 0; x < k; x++) {
+        for(int y = 0; y < k; y++) {
+            for(int z = 0; z < k; z++) {
+                int base = x * (k+1) * (k+1) + y * (k+1) + z;
+                std::vector<int> subcube_indices = {
+                    base, base + 1, base + (k+1), base + (k+1) + 1, 
+                    base + (k+1)*(k+1), base + (k+1)*(k+1) + 1, 
+                    base + (k+1)*(k+1) + (k+1), base + (k+1)*(k+1) + (k+1) + 1
+                };
+
+                std::vector<Vertex<Tp, 3>*> subcube(8);
+                for(int i = 0; i < 8; i++) {
+                    subcube[i] = mesh.vertices[subcube_indices[i]];
+                }
+
+                std::vector<std::vector<Vertex<Tp, 3>*>> simplices_verts = 
+                {
+                    {subcube[0], subcube[1], subcube[1+2], subcube[1+2+4]},
+                    {subcube[0], subcube[2], subcube[1+2], subcube[1+2+4]},
+
+                    {subcube[0], subcube[1], subcube[1+4], subcube[1+2+4]},
+                    {subcube[0], subcube[2], subcube[2+4], subcube[1+2+4]},
+
+                    {subcube[0], subcube[4], subcube[1+4], subcube[1+2+4]},
+                    {subcube[0], subcube[4], subcube[2+4], subcube[1+2+4]}
+                };
+                for(int i = 0; i < 6; i++) {
+                    std::vector<Vertex<Tp, 3>*> simplex_verts(3+1);
+                    for(int j = 0; j < 3+1; j++) {
+                        simplex_verts[j] = simplices_verts[i][j];
+                    }
+                    Element<Tp, 3> *simplex = new Element<Tp, 3>(Element<Tp, 3>::get_simplex(simplex_verts, master));
+                    mesh.elements.push_back(simplex);
+                }
+            }
+        }
+    }
+
+    return mesh;
+}
 
 template <typename Tp, int D>
 Mesh<Tp, D> Mesh<Tp, D>::get_unit_cube_triangulation() {
