@@ -18,14 +18,14 @@ class Element {
 private:
     Element* parent; // points to master element, null if *this is the master element
     std::vector<Vertex<Tp, D>*> vertices;
-    std::vector<LinearFunction<Tp>> funcs; // local shape functions
+    std::vector<LinearFunction<Tp, D>> funcs; // local shape functions
     int index;
-    AffineTransformation<Tp> transform; // affine transformation used to go from the master element to *this
+    AffineTransformation<Tp, D> transform; // affine transformation used to go from the master element to *this
 
-    VectorX<Tp> centroid;
-    Tp volume;
-    bool built_data = false;
-    static Element* master_simplex = nullptr;
+    mutable Vector<Tp, D> centroid;
+    mutable Tp volume;
+    mutable bool built_data = false;
+    static Element* master_simplex;
 
 public:
     Element() {}
@@ -38,23 +38,25 @@ public:
         return volume;
     }
 
-    VectorX<Tp> get_centroid() const {
+    Vector<Tp, D> get_centroid() const {
         if(!built_data) build_data();
         return centroid;
     }
 
-    std::vector<std::pair<VectorX<Tp>, Tp>> get_quadrature_points() {
-        return {{get_centroid(), 1}};
+    std::vector<std::pair<Vector<Tp, D>, Tp>> get_quadrature_points() const {
+        return {{get_centroid(), Tp(1)}};
     }
 
     int get_index() { return index; }
-    Vertex<Tp, D> *get_vertex(size_t i)   { return vertices[i]; }
-    LinearFunction<Tp> &get_function(size_t i) { return funcs[i]; }
+    Vertex<Tp, D> *get_vertex(size_t i) { return vertices[i]; }
+    LinearFunction<Tp, D> &get_function(size_t i) { return funcs[i]; }
 
+    std::vector<Vertex<Tp, D>*>& get_vertices() { return vertices; }
+    std::vector<LinearFunction<Tp, D>>& get_functions() { return funcs; }
 
-    void build_data() {
-        MatrixX<Tp> V(D, D);
-        VectorX<Tp> v0 = vertices[0]->get_coords();
+    void build_data() const {
+        Matrix<Tp, D, D> V(D, D);
+        Vector<Tp, D> v0 = vertices[0]->get_coords();
         for(int i = 0; i < D; i++) {
             V.col(i) = vertices[i + 1]->get_coords() - v0;
         }
@@ -80,42 +82,41 @@ public:
         master_simplex->parent = nullptr;
 
         master_simplex->vertices.resize(D+1);
-        master_simplex->vertices[0] = new Vertex<Tp, D>(0);
-        for(int i = 1; i <= D; i++) {
-            Vertex<Tp, D> *vertex = new Vertex<Tp, D>(0);
+        master_simplex->vertices[0] = new Vertex<Tp, D>(Tp(0));
+        for(int i = 0; i < D; i++) {
+            Vertex<Tp, D> *vertex = new Vertex<Tp, D>(Tp(0));
             vertex->coefRef(i) = Tp(1);
-            master_simplex->vertices[i] = vertex;
+            master_simplex->vertices[i + 1] = vertex;
         }
 
-        std::vector<Tp> c(D+1, Tp(-1));
-        c[D] = Tp(1);
-        master_simplex->funcs.push_back(LinearFunction<Tp>(c));
-        c.assign(D+1, 0);
-        for(int i = 1; i <= D; i++) {
+        Vector<Tp, D> c = Vector<Tp, D>::Constant(D, Tp(-1));
+        master_simplex->funcs.push_back(LinearFunction<Tp, D>(c, Tp(1)));
+        c = Vector<Tp, D>::Constant(D, Tp(0));
+        for(int i = 0; i < D; i++) {
             c[i] = Tp(1);
-            master_simplex->funcs.push_back(LinearFunction<Tp>(c));
+            master_simplex->funcs.push_back(LinearFunction<Tp, D>(c, Tp(0)));
             c[i] = Tp(0);
         }
 
-        master_simplex->transform = AffineTransformation<Tp>(MatrixX<Tp>::Identity(D, D), VectorX<Tp>::Zero(D));
+        master_simplex->transform = AffineTransformation<Tp, D>(Matrix<Tp, D, D>::Identity(), Vector<Tp, D>::Zero());
         return *master_simplex;
     }
 
 
-    Element<Tp, D> get_simplex(const std::vector<Vertex<Tp, D>*> vertices, const Element<Tp, D> &master) {
+    static Element<Tp, D> get_simplex(const std::vector<Vertex<Tp, D>*> vertices, Element<Tp, D> &master) {
         Element<Tp, D> e(vertices);
         e.parent = &master;
 
         e.transform.b = e.vertices[0]->get_coords();
         e.transform.A.resize(D, D);
         for(int i = 1; i <= D; i++) {
-            e.tranform.A.col(i - 1) = e.vertices[i]->get_coords();
+            e.transform.A.col(i - 1) = e.vertices[i]->get_coords();
         }
 
-        AffineTransformation<Tp> transform_inv = e->transform.inverse();
+        AffineTransformation<Tp, D> transform_inv = e.transform.inverse();
         e.funcs.resize(D+1);
         for(int i = 0; i < D; i++) { 
-            e.funcs[i] = compose_affine_linear(transform_inv, master.funcs[i]);
+            e.funcs[i] = compose_affine_linear<Tp, D>(transform_inv, master.funcs[i]);
         }
 
         return e;
@@ -125,5 +126,7 @@ public:
 };
 
 
+template<typename Tp, int D>
+Element<Tp, D>* Element<Tp, D>::master_simplex = nullptr;
 
 #endif /* ELEMENT_HPP */

@@ -10,26 +10,23 @@
 
 /// @brief Describes the linear function L(x) = coeffs^T * x + constant
 /// @tparam Tp The scalar type
-template <typename Tp>
+template <typename Tp, int D>
 class LinearFunction {
 public:
-    VectorX<Tp> coeffs;
+    Vector<Tp, D> coeffs;
     Tp constant;
-    LinearFunction(const Tp constant_) : coeffs(0), constant(constant_) {}
-    LinearFunction(const std::vector<Tp> coeffs_) : coeffs(coeffs_), constant(0) {}
-    LinearFunction(const std::vector<Tp> coeffs_, const Tp constant_) : coeffs(coeffs_), constant(constant_) {}
+    LinearFunction() : coeffs(Vector<Tp, D>::Zero()), constant(Tp(0)) {}
+    LinearFunction(const Tp _constant) : coeffs(Vector<Tp, D>::Zero()), constant(_constant) {}
+    LinearFunction(const Vector<Tp, D> _coeffs) : coeffs(_coeffs), constant(0) {}
+    LinearFunction(const Vector<Tp, D> _coeffs, const Tp _constant) : coeffs(_coeffs), constant(_constant) {}
 
 
-    VectorX<Tp> gradient(VectorX<Tp> point) { return gradient(); }
-    VectorX<Tp> gradient() { 
-        return coeffs.head(coeffs.size() - 1); 
+    Vector<Tp, D> gradient(Vector<Tp, D> point) const { return gradient(); }
+    Vector<Tp, D> gradient() const {
+        return coeffs;
     }
 
-    Tp operator()(const VectorX<Tp> &point) const {
-        return evaluate(point);
-    }
-
-    Tp evaluate(const VectorX<Tp>& point) const {
+    Tp operator()(const Vector<Tp, D> &point) const {
         return constant + coeffs.dot(point);
     }
 
@@ -37,25 +34,26 @@ public:
 
 /// @brief Describes the affine transformation T(x) = Ax + b
 /// @tparam Tp The scalar type
-template <typename Tp>
+template <typename Tp, int D>
 class AffineTransformation {
 public:
-    MatrixX<Tp> A;
-    VectorX<Tp> b;
+    Matrix<Tp, D, D> A;
+    Vector<Tp, D> b;
 
-    AffineTransformation();
-    AffineTransformation(MatrixX<Tp> A_, VectorX<Tp> b_) : A(A_), b(b_) {
+    AffineTransformation() : A(Matrix<Tp, D, D>::Identity()), b(Vector<Tp, D>::Zero()) {}
+    AffineTransformation(Matrix<Tp, D, D> _A, Vector<Tp, D> _b) : A(_A), b(_b) {
         assert(A.rows() == A.cols() && A.rows() == b.rows());
     }
 
-    VectorX<Tp> operator()(const VectorX<Tp> &p) const {
+    Vector<Tp, D> operator()(const Vector<Tp, D> &p) const {
         return A * p + b;
     }
 
     AffineTransformation inverse() const {
-        MatrixX<Tp> A_inv = A.inverse();
-        VectorX<Tp> bb = - A_inv * b;
-        return AffineTransformation(A_inv, bb);
+        Matrix<Tp, D, D> A_inv = A.inverse();
+        Vector<Tp, D> bb = - A_inv * b;
+        AffineTransformation ret = AffineTransformation(A_inv, bb);
+        return ret;
     }
 
 };
@@ -64,49 +62,49 @@ public:
 /// @brief Compose an affine transformation with a linear function
 /// @tparam Tp The scalar type
 /// @return The function (lf; at)(x) = lf(at(x)).
-template <typename Tp>
-LinearFunction<Tp> compose_affine_linear(const AffineTransformation<Tp> &at, const LinearFunction<Tp> &lf) {
-    return LinearFunction<Tp>(at.A.transpose() * lf.coeffs, lf.coeffs.transpose() * at.b + lf.constant);
+template <typename Tp, int D>
+LinearFunction<Tp, D> compose_affine_linear(const AffineTransformation<Tp, D> &at, const LinearFunction<Tp, D> &lf) {
+    assert(at.A.cols() == lf.coeffs.size());
+    Vector<Tp, D> new_coeffs = at.A.transpose() * lf.coeffs;
+    Tp new_constant = lf.coeffs.dot(at.b) + lf.constant;
+    return LinearFunction<Tp, D>(new_coeffs, new_constant);
 }
 
 
 template <typename Tp, int D>
 class BilinearForm {
 private: 
-    std::function<MatrixX<Tp>(const VectorX<Tp>&)> Bf;
+    std::function<Matrix<Tp, D, D>(const Vector<Tp, D>&)> Bf;
 public:
-    BilinearForm();
-    BilinearForm(std::function<MatrixX<Tp>(const VectorX<Tp>&)> _Bf) : Bf(_Bf) {}
-    Tp operator()(const LinearFunction<Tp> &f, const LinearFunction<Tp> &g, const Element<Tp, D> &element) const {
+    BilinearForm() : Bf([](const Vector<Tp, D>&) { return Matrix<Tp, D, D>::Identity(); }) {};
+    BilinearForm(std::function<Matrix<Tp, D, D>(const Vector<Tp, D>&)> _Bf) : Bf(_Bf) {}
+    Tp operator()(const LinearFunction<Tp, D> &f, const LinearFunction<Tp, D> &g, const Element<Tp, D> &element) const {
         Tp avg = Tp(0);
-        for(std::pair<VectorX<Tp>, Tp> &p: element.get_quadrature_points()) {
-            MatrixX<Tp> B = Bf ? Bf(p.first) : MatrixX<Tp>::Identity(D, D); 
-            avg += p.second * (f.gradient(p.first).transpose() * B * g.gradient(p.first));
+        for(std::pair<Vector<Tp, D>, Tp> &p: element.get_quadrature_points()) {
+            Matrix<Tp, D, D> B = Bf ? Bf(p.first) : Matrix<Tp, D, D>::Identity(); 
+            avg += p.second * Tp((f.gradient(p.first).transpose() * B) * g.gradient(p.first));
         }
         return avg * element.get_volume();
     }
-    MatrixX<Tp> operator()(const VectorX<Tp> &x) const {
-        return Bf(x);
-    }
+    Matrix<Tp, D, D> operator()(const Vector<Tp, D> &x) const { return Bf(x); }
 };
 
 template <typename Tp, int D>
 class LinearForm {
 private: 
-    std::function<Tp(const VectorX<Tp>&)> Lf;
+    std::function<Tp(const Vector<Tp, D>&)> Lf;
 public:
-    LinearForm();
-    LinearForm(std::function<Tp(const VectorX<Tp>&)> _Lf) : Lf(_Lf) {}
-    Tp operator()(const LinearFunction<Tp> &f, const Element<Tp, D> &element) const {
-        Tp avg = Tp(0);
-        for(std::pair<VectorX<Tp>, Tp> &p: element.get_quadrature_points()) {
+    LinearForm() : Lf([](const Vector<Tp, D>&) { return Tp(0); }) {}
+    LinearForm(std::function<Tp(const Vector<Tp, D>&)> _Lf) : Lf(_Lf) {}
+    Tp operator()(const LinearFunction<Tp, D> &f, const Element<Tp, D> &element) const {
+        Tp avg = Tp(0); 
+
+        for(std::pair<Vector<Tp, D>, Tp> &p: element.get_quadrature_points()) {
             avg += p.second * Lf(p.first) * f(p.first);
         }
         return avg * element.get_volume();
     }
-    Tp operator()(const VectorX<Tp> &x) const {
-        return Lf(x);
-    }
+    Tp operator()(const Vector<Tp, D> &x) const { return Lf(x); }
 };
 
 template <typename Tp>
