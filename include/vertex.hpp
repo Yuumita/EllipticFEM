@@ -36,6 +36,16 @@ public:
     Tp &coefRef(size_t i)    { return coords[i]; }
     Tp &operator[](size_t i) { return coords[i]; }
 
+    friend std::ostream& operator<<(std::ostream& os, const Vertex<Tp, D>& vertex) {
+        os << "([";
+        for (int i = 0; i < D; ++i) {
+            os << vertex.coords[i];
+            if (i < D - 1) os << ", ";
+        }
+        os << "], " << vertex.index << ")";
+        return os;
+    }
+
 };
 
 

@@ -44,7 +44,7 @@ public:
     }
 
     std::vector<std::pair<Vector<Tp, D>, Tp>> get_quadrature_points() const {
-        return get_quadrature_points_1();
+        return get_quadrature_points_2();
     }
 
     std::vector<std::pair<Vector<Tp, D>, Tp>> get_quadrature_points_1() const {
@@ -59,6 +59,29 @@ public:
             ret[i] = {x, get_volume() / (D + 2)};
         }
         ret[D + 1] = {c, get_volume() / (D + 2)};
+        return ret;
+    }
+
+
+    std::vector<std::pair<Vector<Tp, D>, Tp>> get_quadrature_points_rand(int k = 35) const {
+        std::vector<std::pair<Vector<Tp, D>, Tp>> ret(k);
+        for(int i = 0; i < k; i++) {
+            std::vector<Tp> bary(D+1);
+            for(int j = 0; j < D; j++) {
+                bary[j] = static_cast<Tp>(rand()) / (Tp)(RAND_MAX);
+            }
+            bary[D] = Tp(1);
+
+            std::sort(bary.begin(), bary.end());
+
+            Vector<Tp, D> point = Vector<Tp, D>::Zero();
+            for(int j = 0; j <= D; j++) {
+                Tp w = bary[j] - (j ? bary[j - 1] : Tp(0));
+                point += w * vertices[j]->get_coords();
+            }
+
+            ret[i] = {point, get_volume() / Tp(k)};
+        }
         return ret;
     }
 
@@ -81,6 +104,8 @@ public:
         for(int i = 1; i < vertices.size(); i++) {
             centroid += vertices[i]->get_coords();
         }
+        centroid /= Tp(D + 1);
+        built_data = true;
     }
 
     void build_data(std::vector<Vertex<Tp, D>*> nvertices) {
@@ -125,14 +150,28 @@ public:
         e.transform.b = e.vertices[0]->get_coords();
         e.transform.A.resize(D, D);
         for(int i = 1; i <= D; i++) {
-            e.transform.A.col(i - 1) = e.vertices[i]->get_coords();
+            e.transform.A.col(i - 1) = e.vertices[i]->get_coords() - e.vertices[0]->get_coords();
         }
+
+#ifdef DEBUG
+        std::cout << "Transformation of element between ";
+        for(Vertex<Tp, D> *v: e.get_vertices())
+            std::cout << *v <<" ";
+        std::cout << "\tMatrix A: " << e.transform.A << std::endl;
+        std::cout << "\tb: " << e.transform.b << std::endl;
+#endif
+        if (std::abs(e.transform.A.determinant()) < 1e-8) {
+            std::cerr << "Warning: Singular matrix, cannot invert." << std::endl;
+            throw std::runtime_error("Singular matrix encountered.");
+        }
+
 
         AffineTransformation<Tp, D> transform_inv = e.transform.inverse();
         e.funcs.resize(D+1);
         for(int i = 0; i < D; i++) { 
             e.funcs[i] = compose_affine_linear<Tp, D>(transform_inv, master.funcs[i]);
         }
+
 
         return e;
     }

@@ -16,6 +16,7 @@ private:
 
 public:
     static Mesh<Tp, D> get_unit_cube_triangulation();
+    static Mesh<Tp, D> get_2d_unit_cube_triangulation(Tp h = 1);
     static Mesh<Tp, D> get_3d_unit_cube_triangulation(Tp h = 1);
 
     Vertex<Tp, D> *get_vertex(size_t i)   { return vertices[i]; }
@@ -28,8 +29,76 @@ public:
 
 };
 
+
+template <typename Tp, int D>
+Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(Tp h) {
+    assert(D == 2);
+    Mesh<Tp, 2> mesh;
+
+    int k = static_cast<int>(1 / h);
+
+    for(int x = 0; x <= k; x++) {
+        for(int y = 0; y <= k; y++) {
+            Vector<Tp, 2> coords;
+            coords[0] = x * h;
+            coords[1] = y * h;
+            mesh.vertices.push_back(new Vertex<Tp, 2>(coords, x * (k+1) + y));
+#ifdef DEBUG
+            std::cerr << "Created vertex " << *mesh.vertices.back() << std::endl;
+#endif
+        }
+    }
+
+
+    Element<Tp, 2> master = Element<Tp, 2>::get_master_simplex();
+    
+    for(int x = 0; x < k; x++) {
+        for(int y = 0; y < k; y++) {
+            int base = x * (k+1) + y;
+            std::vector<int> subsquare_indices = { base, base + 1, base + (k+1), base + (k+1) + 1 };
+
+            std::vector<Vertex<Tp, 2>*> subsqr(4);
+            for(int i = 0; i < 4; i++) {
+                subsqr[i] = mesh.vertices[subsquare_indices[i]];
+            }
+
+            Vector<Tp, 2> coords;
+            coords[0] = (subsqr[0]->get_coords()[0] + subsqr[3]->get_coords()[0]) / Tp(2);
+            coords[1] = (subsqr[0]->get_coords()[1] + subsqr[3]->get_coords()[1]) / Tp(2);
+            Vertex<Tp, 2> *c = new Vertex<Tp, 2>(coords, mesh.vertices.size());
+            mesh.vertices.push_back(c);
+#ifdef DEBUG
+            std::cerr << "Created vertex: " << *c << std::endl;
+#endif
+
+
+            std::vector<std::vector<Vertex<Tp, 2>*>> simplices_verts = 
+                {
+                    {c, subsqr[0], subsqr[1]},
+                    {c, subsqr[0], subsqr[2]},
+                    {c, subsqr[1], subsqr[3]},
+                    {c, subsqr[2], subsqr[3]}
+                };
+
+            for(int i = 0; i < 4; i++) {
+                Element<Tp, 2> *simplex = new Element<Tp, 2>(Element<Tp, 2>::get_simplex(simplices_verts[i], master));
+                mesh.elements.push_back(simplex);
+#ifdef DEBUG
+            std::cerr << "Created triangle between " << 
+                "(" << simplices_verts[i][0]->get_coords()[0] << ", " << simplices_verts[i][0]->get_coords()[1] << ") - " << 
+                "(" << simplices_verts[i][1]->get_coords()[0] << ", " << simplices_verts[i][1]->get_coords()[1] << ") - " << 
+                "(" << simplices_verts[i][2]->get_coords()[0] << ", " << simplices_verts[i][2]->get_coords()[1] << ")" <<  std::endl;
+#endif
+            }
+        }
+    }
+
+    return mesh;
+}
+
 template <typename Tp, int D>
 Mesh<Tp, D> Mesh<Tp, D>::get_3d_unit_cube_triangulation(Tp h) {
+    assert(D == 3);
     Mesh<Tp, 3> mesh;
 
     int k = static_cast<int>(1 / h);
@@ -77,11 +146,11 @@ Mesh<Tp, D> Mesh<Tp, D>::get_3d_unit_cube_triangulation(Tp h) {
                     {subcube[0], subcube[4], subcube[2+4], subcube[1+2+4]}
                 };
                 for(int i = 0; i < 6; i++) {
-                    std::vector<Vertex<Tp, 3>*> simplex_verts(3+1);
-                    for(int j = 0; j < 3+1; j++) {
-                        simplex_verts[j] = simplices_verts[i][j];
-                    }
-                    Element<Tp, 3> *simplex = new Element<Tp, 3>(Element<Tp, 3>::get_simplex(simplex_verts, master));
+                    // std::vector<Vertex<Tp, 3>*> simplex_verts(3+1);
+                    // for(int j = 0; j < 3+1; j++) {
+                    //     simplex_verts[j] = simplices_verts[i][j];
+                    // }
+                    Element<Tp, 3> *simplex = new Element<Tp, 3>(Element<Tp, 3>::get_simplex(simplices_verts[i], master));
                     mesh.elements.push_back(simplex);
                 }
             }

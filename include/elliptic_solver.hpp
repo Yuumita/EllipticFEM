@@ -36,22 +36,25 @@ template <typename Tp, int D>
 void EllipticSolver<Tp, D>::assemble() {
     int N = mesh->get_vertices().size();
     stiffness_matrix.resize(N, N); // ???
-    /// stiffness_matrix.reserve( ... ); 
+    stiffness_matrix.reserve(Eigen::VectorX<Tp>::Constant(N, D + 1)); 
     rhs.resize(N); 
     rhs.setZero();
 
     for(Element<Tp, D>* e : mesh->get_elements()) {
         for(int i = 0; i < e->get_vertices().size(); i++) {
             Vertex<Tp, D> *I = e->get_vertex(i);
+            rhs.coeffRef(I->get_index()) += L(e->get_function(i), *e);
             for(int j = i; j < e->get_vertices().size(); j++) {
                 Vertex<Tp, D> *J = e->get_vertex(j);
                 stiffness_matrix.coeffRef(I->get_index(), J->get_index()) += B(e->get_function(i), e->get_function(j), *e);
                 if(I != J) 
                     stiffness_matrix.coeffRef(J->get_index(), I->get_index()) += B(e->get_function(j), e->get_function(i), *e);
             }
-            rhs.coeffRef(I->get_index()) += L(e->get_function(i), *e);
         }
     }
+#ifdef DEBUG
+    std::cout << stiffness_matrix << "\n" << rhs << std::endl;
+#endif 
 }
 
 template <typename Tp, int D>

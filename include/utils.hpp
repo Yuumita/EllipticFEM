@@ -41,9 +41,7 @@ public:
     Vector<Tp, D> b;
 
     AffineTransformation() : A(Matrix<Tp, D, D>::Identity()), b(Vector<Tp, D>::Zero()) {}
-    AffineTransformation(Matrix<Tp, D, D> _A, Vector<Tp, D> _b) : A(_A), b(_b) {
-        assert(A.rows() == A.cols() && A.rows() == b.rows());
-    }
+    AffineTransformation(Matrix<Tp, D, D> _A, Vector<Tp, D> _b) : A(_A), b(_b) { }
 
     Vector<Tp, D> operator()(const Vector<Tp, D> &p) const {
         return A * p + b;
@@ -80,7 +78,7 @@ public:
     BilinearForm(std::function<Matrix<Tp, D, D>(const Vector<Tp, D>&)> _Bf) : Bf(_Bf) {}
     Tp operator()(const LinearFunction<Tp, D> &f, const LinearFunction<Tp, D> &g, const Element<Tp, D> &element) const {
         Tp avg = Tp(0);
-        for(std::pair<Vector<Tp, D>, Tp> &p: element.get_quadrature_points()) {
+        for(std::pair<Vector<Tp, D>, Tp> &p: element.get_quadrature_points_1()) {
             Matrix<Tp, D, D> B = Bf ? Bf(p.first) : Matrix<Tp, D, D>::Identity(); 
             avg += p.second * Tp((f.gradient(p.first).transpose() * B) * g.gradient(p.first));
         }
@@ -98,7 +96,7 @@ public:
     LinearForm(std::function<Tp(const Vector<Tp, D>&)> _Lf) : Lf(_Lf) {}
     Tp operator()(const LinearFunction<Tp, D> &f, const Element<Tp, D> &element) const {
         Tp avg = Tp(0); 
-        for(std::pair<Vector<Tp, D>, Tp> &p: element.get_quadrature_points()) {
+        for(std::pair<Vector<Tp, D>, Tp> &p: element.get_quadrature_points_rand()) {
             avg += p.second * Lf(p.first) * f(p.first);
         }
         return avg;
