@@ -12,14 +12,12 @@
 const int D = 2;
 const long double PI = 3.1415926535;
 
-const long double scale = 10000000;
-
 // -Δu = f_rhs
 long double f_rhs(Vector<long double, D> point) {
 
 //    return 6;
 
-    long double ret = 2.0;
+    long double ret = (long double)(D) * PI * PI;
     for(int i = 0; i < D; i++) {
         ret *= sin(point[i] * PI);
     }
@@ -68,14 +66,18 @@ int main() {
     LinearForm<long double, D> L(f_rhs);
     BilinearForm<long double, D> B;
 
-    long double h = 1.0 / 6.0;
+    // int divs = 3;
+    int divs; std::cin >> divs;
+    long double h = 1.0 / static_cast<long double>(divs);
 
-    Mesh<long double, D> mesh(Mesh<long double, D>::get_2d_unit_cube_triangulation(h));
+    Mesh<long double, D> mesh(Mesh<long double, D>::get_2d_unit_cube_triangulation(divs));
     EllipticSolver<long double, D> es(&mesh, B, L);
 
     VectorX<long double> u = es.solve();
 
-    u /= (h * h);
+    // u /= (h * h * h);
+    u /= (h);
+
 
     std::cerr << u << std::endl;
 

@@ -16,8 +16,8 @@ private:
 
 public:
     static Mesh<Tp, D> get_unit_cube_triangulation();
-    static Mesh<Tp, D> get_2d_unit_cube_triangulation(Tp h = 1);
-    static Mesh<Tp, D> get_3d_unit_cube_triangulation(Tp h = 1);
+    static Mesh<Tp, D> get_2d_unit_cube_triangulation(int divs = 1);
+    static Mesh<Tp, D> get_3d_unit_cube_triangulation(int divs = 1);
 
     Vertex<Tp, D> *get_vertex(size_t i)   { return vertices[i]; }
     std::vector<Vertex<Tp, D>*> &get_vertices()   { return vertices; }
@@ -31,11 +31,11 @@ public:
 
 
 template <typename Tp, int D>
-Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(Tp h) {
+Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(int k) {
     assert(D == 2);
     Mesh<Tp, 2> mesh;
 
-    int k = static_cast<int>(1 / h);
+    Tp h = Tp(1) / static_cast<Tp>(k);
 
     for(int x = 0; x <= k; x++) {
         for(int y = 0; y <= k; y++) {
@@ -97,11 +97,11 @@ Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(Tp h) {
 }
 
 template <typename Tp, int D>
-Mesh<Tp, D> Mesh<Tp, D>::get_3d_unit_cube_triangulation(Tp h) {
+Mesh<Tp, D> Mesh<Tp, D>::get_3d_unit_cube_triangulation(int k) {
     assert(D == 3);
     Mesh<Tp, 3> mesh;
 
-    int k = static_cast<int>(1 / h);
+    Tp h = Tp(1) / static_cast<Tp>(k);
 
     for(int x = 0; x <= k; x++) {
         for(int y = 0; y <= k; y++) {

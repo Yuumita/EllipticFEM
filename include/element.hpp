@@ -93,12 +93,7 @@ public:
     std::vector<LinearFunction<Tp, D>>& get_functions() { return funcs; }
 
     void build_data() const {
-        Matrix<Tp, D, D> V(D, D);
-        Vector<Tp, D> v0 = vertices[0]->get_coords();
-        for(int i = 0; i < D; i++) {
-            V.col(i) = vertices[i + 1]->get_coords() - v0;
-        }
-        volume = std::abs(V.determinant() / factorial<Tp>(D));
+        volume = std::abs(transform.A.determinant() / factorial<Tp>(D));
 
         centroid = vertices[0]->get_coords();
         for(int i = 1; i < vertices.size(); i++) {
