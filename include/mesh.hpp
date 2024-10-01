@@ -19,11 +19,24 @@ public:
     static Mesh<Tp, D> get_2d_unit_cube_triangulation(int divs = 1);
     static Mesh<Tp, D> get_3d_unit_cube_triangulation(int divs = 1);
 
-    Vertex<Tp, D> *get_vertex(size_t i)   { return vertices[i]; }
+    size_t get_inner_vertices_size() const {
+        size_t ret = 0;
+        for(int i = 0; i < vertices.size(); i++) 
+            if(!vertices[i]->is_boundary()) ret++;
+        return ret;
+    }
+
+    Vertex<Tp, D> *get_vertex(size_t i)   { 
+        if (i >= vertices.size()) throw std::out_of_range("Vertex index out of range");
+        return vertices[i]; 
+    }
     std::vector<Vertex<Tp, D>*> &get_vertices()   { return vertices; }
     size_t get_vertices_size()   { return vertices.size(); }
 
-    Element<Tp, D> *get_element(size_t i) { return elements[i]; }
+    Element<Tp, D> *get_element(size_t i) { 
+        if (i >= elements.size()) throw std::out_of_range("Element index out of range");
+        return elements[i];
+    }
     std::vector<Element<Tp, D>*> &get_elements()   { return elements; }
     size_t get_elements_size()   { return elements.size(); }
 
@@ -32,20 +45,20 @@ public:
 
 template <typename Tp, int D>
 Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(int k) {
-    assert(D == 2);
+    static_assert(D == 2, "get_2d_unit_cube_triangulation can only be called for 2D meshes.");
+
     Mesh<Tp, 2> mesh;
 
     Tp h = Tp(1) / static_cast<Tp>(k);
 
+    int index_c = 0;
     for(int x = 0; x <= k; x++) {
         for(int y = 0; y <= k; y++) {
             Vector<Tp, 2> coords;
             coords[0] = x * h;
             coords[1] = y * h;
-            mesh.vertices.push_back(new Vertex<Tp, 2>(coords, x * (k+1) + y));
-#ifdef DEBUG
-            std::cerr << "Created vertex " << *mesh.vertices.back() << std::endl;
-#endif
+            bool at_boundary = coords[0] == Tp(0) || coords[0] == Tp(1) || coords[1] == Tp(0) || coords[1] == Tp(1);
+            mesh.vertices.push_back(new Vertex<Tp, 2>(coords, (!at_boundary ? index_c++ : -1)));
         }
     }
 
@@ -65,11 +78,9 @@ Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(int k) {
             Vector<Tp, 2> coords;
             coords[0] = (subsqr[0]->get_coords()[0] + subsqr[3]->get_coords()[0]) / Tp(2);
             coords[1] = (subsqr[0]->get_coords()[1] + subsqr[3]->get_coords()[1]) / Tp(2);
-            Vertex<Tp, 2> *c = new Vertex<Tp, 2>(coords, mesh.vertices.size());
+            bool at_boundary = coords[0] == Tp(0) || coords[0] == Tp(1) || coords[1] == Tp(0) || coords[1] == Tp(1);
+            Vertex<Tp, 2> *c = new Vertex<Tp, 2>(coords, (!at_boundary ? index_c++ : -1));
             mesh.vertices.push_back(c);
-#ifdef DEBUG
-            std::cerr << "Created vertex: " << *c << std::endl;
-#endif
 
 
             std::vector<std::vector<Vertex<Tp, 2>*>> simplices_verts = 
@@ -82,18 +93,13 @@ Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(int k) {
 
             for(int i = 0; i < 4; i++) {
                 Element<Tp, 2> *simplex = new Element<Tp, 2>(Element<Tp, 2>::get_simplex(simplices_verts[i], master));
+                bool at_boundary = false;
                 mesh.elements.push_back(simplex);
-#ifdef DEBUG
-            std::cerr << "Created triangle between " << 
-                "(" << simplices_verts[i][0]->get_coords()[0] << ", " << simplices_verts[i][0]->get_coords()[1] << ") - " << 
-                "(" << simplices_verts[i][1]->get_coords()[0] << ", " << simplices_verts[i][1]->get_coords()[1] << ") - " << 
-                "(" << simplices_verts[i][2]->get_coords()[0] << ", " << simplices_verts[i][2]->get_coords()[1] << ")" <<  std::endl;
-#endif
             }
         }
     }
 
-    return mesh;
+    return std::move(mesh);
 }
 
 template <typename Tp, int D>
@@ -157,7 +163,7 @@ Mesh<Tp, D> Mesh<Tp, D>::get_3d_unit_cube_triangulation(int k) {
         }
     }
 
-    return mesh;
+    return std::move(mesh);
 }
 
 template <typename Tp, int D>
@@ -191,7 +197,7 @@ Mesh<Tp, D> Mesh<Tp, D>::get_unit_cube_triangulation() {
         mesh.elements.push_back(simplex);
     } while (std::next_permutation(perm.begin(), perm.end()));
 
-    return mesh;
+    return std::move(mesh);
 }
         
 

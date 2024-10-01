@@ -29,7 +29,8 @@ private:
 
 public:
     Element() {}
-    Element(std::vector<Vertex<Tp, D>*> vertices_): vertices(vertices_) {}
+    Element(std::vector<Vertex<Tp, D>*> _vertices)
+        : vertices(_vertices), parent(nullptr), index(Tp(0)), volume(Tp(0)), built_data(false) {}
 
 
     /// @return Volume of the d-simplex given by vertices[0...d] in d-dimensional space.
@@ -76,6 +77,7 @@ public:
 
             Vector<Tp, D> point = Vector<Tp, D>::Zero();
             for(int j = 0; j <= D; j++) {
+                if(j > 0) assert(bary[j] > bary[j-1]);
                 Tp w = bary[j] - (j ? bary[j - 1] : Tp(0));
                 point += w * vertices[j]->get_coords();
             }
@@ -86,8 +88,14 @@ public:
     }
 
     int get_index() { return index; }
-    Vertex<Tp, D> *get_vertex(size_t i) { return vertices[i]; }
-    LinearFunction<Tp, D> &get_function(size_t i) { return funcs[i]; }
+    Vertex<Tp, D> *get_vertex(size_t i) { 
+        if (i >= vertices.size()) throw std::out_of_range("Vertex index out of range");
+        return vertices[i]; 
+    }
+    LinearFunction<Tp, D> &get_function(size_t i) { 
+        if (i >= funcs.size()) throw std::out_of_range("Function index out of range");
+        return funcs[i]; 
+    }
 
     std::vector<Vertex<Tp, D>*>& get_vertices() { return vertices; }
     std::vector<LinearFunction<Tp, D>>& get_functions() { return funcs; }
@@ -124,12 +132,13 @@ public:
             master_simplex->vertices[i + 1] = vertex;
         }
 
+        master_simplex->funcs.resize(D+1);
         Vector<Tp, D> c = Vector<Tp, D>::Constant(D, Tp(-1));
-        master_simplex->funcs.push_back(LinearFunction<Tp, D>(c, Tp(1)));
+        master_simplex->funcs[0] = LinearFunction<Tp, D>(c, Tp(1));
         c = Vector<Tp, D>::Constant(D, Tp(0));
         for(int i = 0; i < D; i++) {
             c[i] = Tp(1);
-            master_simplex->funcs.push_back(LinearFunction<Tp, D>(c, Tp(0)));
+            master_simplex->funcs[i+1] = LinearFunction<Tp, D>(c, Tp(0));
             c[i] = Tp(0);
         }
 
@@ -148,14 +157,7 @@ public:
             e.transform.A.col(i - 1) = e.vertices[i]->get_coords() - e.vertices[0]->get_coords();
         }
 
-#ifdef DEBUG
-        std::cout << "Transformation of element between ";
-        for(Vertex<Tp, D> *v: e.get_vertices())
-            std::cout << *v <<" ";
-        std::cout << "\tMatrix A: " << e.transform.A << std::endl;
-        std::cout << "\tb: " << e.transform.b << std::endl;
-#endif
-        if (std::abs(e.transform.A.determinant()) < 1e-8) {
+        if (std::abs(e.transform.A.determinant()) < Tp(1e-8)) {
             std::cerr << "Warning: Singular matrix, cannot invert." << std::endl;
             throw std::runtime_error("Singular matrix encountered.");
         }
@@ -163,12 +165,28 @@ public:
 
         AffineTransformation<Tp, D> transform_inv = e.transform.inverse();
         e.funcs.resize(D+1);
-        for(int i = 0; i < D; i++) { 
+        for(int i = 0; i <= D; i++) { 
             e.funcs[i] = compose_affine_linear<Tp, D>(transform_inv, master.funcs[i]);
         }
 
+#ifdef DEBUG
+        std::cerr << "================" << std::endl;
+        std::cerr << "Created element in vertices:" << std::endl;
+        for(Vertex<Tp, D> *v: e.vertices) {
+            std::cerr << "\t" << *v << std::endl;
+        }
+        std::cerr << "With functions:" << std::endl;
+        for(LinearFunction<Tp, D> &f: e.funcs) {
+            std::cerr << "\t" << f << std::endl;
+        }
+        std::cerr << "And transformation:" << std::endl;
+            std::cerr << e.transform.A << std::endl;
+            std::cerr << std::endl;
+            std::cerr << e.transform.b << std::endl;
+        std::cerr << "================" << std::endl;
+#endif 
 
-        return e;
+        return std::move(e);
     }
 
     

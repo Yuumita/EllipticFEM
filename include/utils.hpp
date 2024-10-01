@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <cassert>
+#include <functional>
 
 
 #include <eigen3/Eigen/Dense>
@@ -21,13 +22,23 @@ public:
     LinearFunction(const Vector<Tp, D> _coeffs, const Tp _constant) : coeffs(_coeffs), constant(_constant) {}
 
 
-    Vector<Tp, D> gradient(Vector<Tp, D> point) const { return gradient(); }
+    Vector<Tp, D> gradient(const Vector<Tp, D> &point) const { return gradient(); }
     Vector<Tp, D> gradient() const {
         return coeffs;
     }
 
     Tp operator()(const Vector<Tp, D> &point) const {
         return constant + coeffs.dot(point);
+    }
+
+
+    friend std::ostream& operator<<(std::ostream& os, const LinearFunction<Tp, D> &f) {
+        for (int i = 0; i < D; ++i) {
+            os << "(" << f.coeffs[i] << ")x[" << i << "]";
+            os << " + ";
+        }
+        os << "(" << f.constant << ")";
+        return os;
     }
 
 };
@@ -78,9 +89,8 @@ public:
     BilinearForm(std::function<Matrix<Tp, D, D>(const Vector<Tp, D>&)> _Bf) : Bf(_Bf) {}
     Tp operator()(const LinearFunction<Tp, D> &f, const LinearFunction<Tp, D> &g, const Element<Tp, D> &element) const {
         Tp avg = Tp(0);
-        for(std::pair<Vector<Tp, D>, Tp> &p: element.get_quadrature_points_1()) {
-            Matrix<Tp, D, D> B = Bf ? Bf(p.first) : Matrix<Tp, D, D>::Identity(); 
-            avg += p.second * Tp((f.gradient(p.first).transpose() * B) * g.gradient(p.first));
+        for(const std::pair<Vector<Tp, D>, Tp> &p: element.get_quadrature_points_1()) {
+            avg += p.second * Tp((f.gradient(p.first).transpose() * Bf(p.first)) * g.gradient(p.first));
         }
         return avg;
     }
@@ -96,7 +106,7 @@ public:
     LinearForm(std::function<Tp(const Vector<Tp, D>&)> _Lf) : Lf(_Lf) {}
     Tp operator()(const LinearFunction<Tp, D> &f, const Element<Tp, D> &element) const {
         Tp avg = Tp(0); 
-        for(std::pair<Vector<Tp, D>, Tp> &p: element.get_quadrature_points_rand()) {
+        for(const std::pair<Vector<Tp, D>, Tp> &p: element.get_quadrature_points_rand()) {
             avg += p.second * Lf(p.first) * f(p.first);
         }
         return avg;

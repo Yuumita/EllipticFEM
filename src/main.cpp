@@ -48,6 +48,7 @@ long double l2_error(Mesh<long double, D> &mesh, VectorX<long double> &solution)
 
             long double u_approx = 0.0;
             for (int i = 0; i < e->get_vertices().size(); i++) {
+                if(e->get_vertex(i)->is_boundary()) continue;
                 u_approx += solution[e->get_vertex(i)->get_index()] * e->get_function(i)(xq);
             }
 
@@ -76,7 +77,7 @@ int main() {
     VectorX<long double> u = es.solve();
 
     // u /= (h * h * h);
-    u /= (h);
+    // u /= (h);
 
 
     std::cerr << u << std::endl;
