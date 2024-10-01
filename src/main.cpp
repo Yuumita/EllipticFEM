@@ -15,8 +15,6 @@ const long double PI = 3.1415926535;
 // -Δu = f_rhs
 long double f_rhs(Vector<long double, D> point) {
 
-//    return 6;
-
     long double ret = (long double)(D) * PI * PI;
     for(int i = 0; i < D; i++) {
         ret *= sin(point[i] * PI);
@@ -25,12 +23,6 @@ long double f_rhs(Vector<long double, D> point) {
 }
 
 long double analytic_solution(Vector<long double, D> point) {
-
-//    long double ret = 0.0;
-//    for(int i = 0; i < D; i++) {
-//        ret += point[i] * point[i];
-//    }
-//    return ret;
 
     long double ret = 1.0;
     for(int i = 0; i < D; i++) {
@@ -67,29 +59,23 @@ int main() {
     LinearForm<long double, D> L(f_rhs);
     BilinearForm<long double, D> B;
 
-    // int divs = 3;
+    std::cout << "Give the amount of division of the unit cube: ";
+    std::cout.flush();
     int divs; std::cin >> divs;
-    long double h = 1.0 / static_cast<long double>(divs);
 
     Mesh<long double, D> mesh(Mesh<long double, D>::get_2d_unit_cube_triangulation(divs));
     EllipticSolver<long double, D> es(&mesh, B, L);
 
     VectorX<long double> u = es.solve();
 
-    // u /= (h * h * h);
-    // u /= (h);
-
-
     std::cerr << u << std::endl;
 
-
-
     long double error = l2_error(mesh, u);
-    std::cout << "L2 MSE error:  \t" << error << std::endl;
+    std::cout << "L2 error:                \t" << error << std::endl;
 
     u.setZero();
     error = l2_error(mesh, u);
-    std::cout << "L2 on analytic:\t" << error << std::endl;
+    std::cout << "L2 norm of the solution:\t" << error << std::endl;
 
     return 0;
 }

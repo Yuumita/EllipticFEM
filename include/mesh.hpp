@@ -11,7 +11,8 @@
 template <typename Tp, int D>
 class Mesh {
 private:
-    std::vector<Vertex<Tp, D>*>  vertices;
+    std::vector<Vertex<Tp, D>*>  inner_vertices;
+    std::vector<Vertex<Tp, D>*>  boundary_vertices;
     std::vector<Element<Tp, D>*> elements;
 
 public:
@@ -19,19 +20,22 @@ public:
     static Mesh<Tp, D> get_2d_unit_cube_triangulation(int divs = 1);
     static Mesh<Tp, D> get_3d_unit_cube_triangulation(int divs = 1);
 
-    size_t get_inner_vertices_size() const {
-        size_t ret = 0;
-        for(int i = 0; i < vertices.size(); i++) 
-            if(!vertices[i]->is_boundary()) ret++;
-        return ret;
+
+    std::vector<Vertex<Tp, D>*> &get_boundary_vertices()   { return boundary_vertices; }
+    std::vector<Vertex<Tp, D>*> &get_inner_vertices()   { return inner_vertices; }
+    size_t get_inner_vertices_size() const { return inner_vertices.size(); }
+    size_t get_boundary_vertices_size() const { return inner_vertices.size(); }
+
+    Vertex<Tp, D> *get_inner_vertex(size_t i)   { 
+        if (i >= inner_vertices.size()) throw std::out_of_range("Inner vertex index out of range");
+        return inner_vertices[i]; 
     }
 
-    Vertex<Tp, D> *get_vertex(size_t i)   { 
-        if (i >= vertices.size()) throw std::out_of_range("Vertex index out of range");
-        return vertices[i]; 
+    Vertex<Tp, D> *get_boundary_vertex(size_t i)   { 
+        if (i >= boundary_vertices.size()) throw std::out_of_range("Boundary vertex index out of range");
+        return boundary_vertices[i]; 
     }
-    std::vector<Vertex<Tp, D>*> &get_vertices()   { return vertices; }
-    size_t get_vertices_size()   { return vertices.size(); }
+
 
     Element<Tp, D> *get_element(size_t i) { 
         if (i >= elements.size()) throw std::out_of_range("Element index out of range");
@@ -50,6 +54,7 @@ Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(int k) {
     Mesh<Tp, 2> mesh;
 
     Tp h = Tp(1) / static_cast<Tp>(k);
+    std::vector<Vertex<Tp, D>*> vertices;
 
     int index_c = 0;
     for(int x = 0; x <= k; x++) {
@@ -58,7 +63,10 @@ Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(int k) {
             coords[0] = x * h;
             coords[1] = y * h;
             bool at_boundary = coords[0] == Tp(0) || coords[0] == Tp(1) || coords[1] == Tp(0) || coords[1] == Tp(1);
-            mesh.vertices.push_back(new Vertex<Tp, 2>(coords, (!at_boundary ? index_c++ : -1)));
+            Vertex<Tp, 2> *c = new Vertex<Tp, 2>(coords, (!at_boundary ? index_c++ : -1));
+            vertices.push_back(c);
+            if(!at_boundary) mesh.inner_vertices.push_back(c);
+            else mesh.boundary_vertices.push_back(c);
         }
     }
 
@@ -72,7 +80,7 @@ Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(int k) {
 
             std::vector<Vertex<Tp, 2>*> subsqr(4);
             for(int i = 0; i < 4; i++) {
-                subsqr[i] = mesh.vertices[subsquare_indices[i]];
+                subsqr[i] = vertices[subsquare_indices[i]];
             }
 
             Vector<Tp, 2> coords;
@@ -80,7 +88,9 @@ Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(int k) {
             coords[1] = (subsqr[0]->get_coords()[1] + subsqr[3]->get_coords()[1]) / Tp(2);
             bool at_boundary = coords[0] == Tp(0) || coords[0] == Tp(1) || coords[1] == Tp(0) || coords[1] == Tp(1);
             Vertex<Tp, 2> *c = new Vertex<Tp, 2>(coords, (!at_boundary ? index_c++ : -1));
-            mesh.vertices.push_back(c);
+            vertices.push_back(c);
+            if(!at_boundary) mesh.inner_vertices.push_back(c);
+            else mesh.boundary_vertices.push_back(c);
 
 
             std::vector<std::vector<Vertex<Tp, 2>*>> simplices_verts = 
