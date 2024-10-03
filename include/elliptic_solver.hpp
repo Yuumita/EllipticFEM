@@ -25,7 +25,7 @@ public:
 
     void assemble();
     // void apply_boundary_conditions();
-    VectorX<Tp> solve();
+    VectorX<Tp> assemble_and_solve();
 
     Eigen::SparseMatrix<Tp> get_stiffness() { return stiffness_matrix; };
     VectorX<Tp> get_load() { return load; };
@@ -41,6 +41,7 @@ void EllipticSolver<Tp, D>::assemble() {
     load.resize(N); 
     load.setZero();
 
+    #pragma omp parallel for
     for(Element<Tp, D>* e : mesh->get_elements()) {
         for(int i = 0; i < e->get_vertices().size(); i++) {
             Vertex<Tp, D> *I = e->get_vertex(i);
@@ -64,7 +65,7 @@ void EllipticSolver<Tp, D>::assemble() {
 }
 
 template <typename Tp, int D>
-VectorX<Tp> EllipticSolver<Tp, D>::solve() {
+VectorX<Tp> EllipticSolver<Tp, D>::assemble_and_solve() {
     assemble();
     int N = stiffness_matrix.rows();
     solution.resize(N);

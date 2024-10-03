@@ -16,7 +16,7 @@ private:
     std::vector<Element<Tp, D>*> elements;
 
 public:
-    static Mesh<Tp, D> get_unit_cube_triangulation();
+    static Mesh<Tp, D> get_unit_cube_triangulation(int divs = 1);
     static Mesh<Tp, D> get_2d_unit_cube_triangulation(int divs = 1);
     static Mesh<Tp, D> get_3d_unit_cube_triangulation(int divs = 1);
 
@@ -48,22 +48,22 @@ public:
 
 
 template <typename Tp, int D>
-Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(int k) {
+Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(int divs) {
     static_assert(D == 2, "get_2d_unit_cube_triangulation can only be called for 2D meshes.");
 
     Mesh<Tp, 2> mesh;
 
-    Tp h = Tp(1) / static_cast<Tp>(k);
+    Tp h = Tp(1) / static_cast<Tp>(divs);
     std::vector<Vertex<Tp, D>*> vertices;
 
     int index_c = 0;
-    for(int x = 0; x <= k; x++) {
-        for(int y = 0; y <= k; y++) {
+    for(int x = 0; x <= divs; x++) {
+        for(int y = 0; y <= divs; y++) {
             Vector<Tp, 2> coords;
             coords[0] = x * h;
             coords[1] = y * h;
             bool at_boundary = coords[0] == Tp(0) || coords[0] == Tp(1) || coords[1] == Tp(0) || coords[1] == Tp(1);
-            Vertex<Tp, 2> *c = new Vertex<Tp, 2>(coords, (!at_boundary ? index_c++ : -1));
+            Vertex<Tp, 2> *c = new Vertex<Tp, 2>(coords, (at_boundary ? -1 : index_c++));
             vertices.push_back(c);
             if(!at_boundary) mesh.inner_vertices.push_back(c);
             else mesh.boundary_vertices.push_back(c);
@@ -73,10 +73,10 @@ Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(int k) {
 
     Element<Tp, 2> master = Element<Tp, 2>::get_master_simplex();
     
-    for(int x = 0; x < k; x++) {
-        for(int y = 0; y < k; y++) {
-            int base = x * (k+1) + y;
-            std::vector<int> subsquare_indices = { base, base + 1, base + (k+1), base + (k+1) + 1 };
+    for(int x = 0; x < divs; x++) {
+        for(int y = 0; y < divs; y++) {
+            int base = x * (divs+1) + y;
+            std::vector<int> subsquare_indices = { base, base + 1, base + (divs+1), base + (divs+1) + 1 };
 
             std::vector<Vertex<Tp, 2>*> subsqr(4);
             for(int i = 0; i < 4; i++) {
@@ -113,102 +113,119 @@ Mesh<Tp, D> Mesh<Tp, D>::get_2d_unit_cube_triangulation(int k) {
 }
 
 template <typename Tp, int D>
-Mesh<Tp, D> Mesh<Tp, D>::get_3d_unit_cube_triangulation(int k) {
-    assert(D == 3);
-    Mesh<Tp, 3> mesh;
-
-    Tp h = Tp(1) / static_cast<Tp>(k);
-
-    for(int x = 0; x <= k; x++) {
-        for(int y = 0; y <= k; y++) {
-            for(int z = 0; z <= k; z++) {
-                Vector<Tp, 3> coords;
-                coords[0] = x * h;
-                coords[1] = y * h;
-                coords[2] = z * h;
-                mesh.vertices.push_back(new Vertex<Tp, 3>(coords, x * (k+1) * (k+1) + y * (k+1) + z));
-
-            }
-        }
-    }
-
-
-    Element<Tp, 3> master = Element<Tp, 3>::get_master_simplex();
-
-    for(int x = 0; x < k; x++) {
-        for(int y = 0; y < k; y++) {
-            for(int z = 0; z < k; z++) {
-                int base = x * (k+1) * (k+1) + y * (k+1) + z;
-                std::vector<int> subcube_indices = {
-                    base, base + 1, base + (k+1), base + (k+1) + 1, 
-                    base + (k+1)*(k+1), base + (k+1)*(k+1) + 1, 
-                    base + (k+1)*(k+1) + (k+1), base + (k+1)*(k+1) + (k+1) + 1
-                };
-
-                std::vector<Vertex<Tp, 3>*> subcube(8);
-                for(int i = 0; i < 8; i++) {
-                    subcube[i] = mesh.vertices[subcube_indices[i]];
-                }
-
-                std::vector<std::vector<Vertex<Tp, 3>*>> simplices_verts = 
-                {
-                    {subcube[0], subcube[1], subcube[1+2], subcube[1+2+4]},
-                    {subcube[0], subcube[2], subcube[1+2], subcube[1+2+4]},
-
-                    {subcube[0], subcube[1], subcube[1+4], subcube[1+2+4]},
-                    {subcube[0], subcube[2], subcube[2+4], subcube[1+2+4]},
-
-                    {subcube[0], subcube[4], subcube[1+4], subcube[1+2+4]},
-                    {subcube[0], subcube[4], subcube[2+4], subcube[1+2+4]}
-                };
-                for(int i = 0; i < 6; i++) {
-                    // std::vector<Vertex<Tp, 3>*> simplex_verts(3+1);
-                    // for(int j = 0; j < 3+1; j++) {
-                    //     simplex_verts[j] = simplices_verts[i][j];
-                    // }
-                    Element<Tp, 3> *simplex = new Element<Tp, 3>(Element<Tp, 3>::get_simplex(simplices_verts[i], master));
-                    mesh.elements.push_back(simplex);
-                }
-            }
-        }
-    }
-
-    return std::move(mesh);
-}
-
-template <typename Tp, int D>
-Mesh<Tp, D> Mesh<Tp, D>::get_unit_cube_triangulation() {
+Mesh<Tp, D> Mesh<Tp, D>::get_unit_cube_triangulation(int divs) {
     Mesh<Tp, D> mesh;
 
-    Vector<Tp, D> coords(D);
-    for (int i = 0; i < (1 << D); ++i) {
-        for (int j = 0; j < D; ++j) {
-            coords[j] = (i & (1 << j)) ? Tp(1) : Tp(0);
+    Tp h = Tp(1) / static_cast<Tp>(divs);
+    std::vector<int> coord_indices(D, 0);
+
+    int verts_size = std::pow(divs + 1, D);
+    std::vector<Vertex<Tp, D>*> vertices(verts_size);
+    int inner_verts_index = 0;
+
+    for(int i = 0; i < verts_size; i++) {
+        Vector<Tp, D> coords(D);
+        int idx = i;
+        bool at_boundary = false;
+        for(int j = 0; j < D; j++) {
+            coord_indices[j] = idx % (divs + 1);
+            coords[j] = coord_indices[j] * h;
+            if(coords[j] == Tp(0) || coords[j] == Tp(1))
+                at_boundary = true;
+            idx /= (divs + 1);
         }
-        mesh.vertices.push_back(new Vertex<Tp, D>(coords, i));
+        Vertex<Tp, D> *vert = new Vertex<Tp, D>(coords, (at_boundary ? -1 : inner_verts_index++));
+        vertices[i] = vert;
+        if(!at_boundary) mesh.inner_vertices.push_back(vert);
+        else mesh.boundary_vertices.push_back(vert);
     }
 
-    std::vector<int> perm(D);
-    for (int i = 0; i < D; ++i) perm[i] = i;
 
     Element<Tp, D> master = Element<Tp, D>::get_master_simplex();
-    std::vector<Vertex<Tp, D>*> simplex_verts(D+1);
-    do {
-        simplex_verts[0] = mesh.vertices[0];  
-        for (int i = 0; i < D; ++i) {
-            int vertex_index = 0;
-            for (int j = 0; j <= i; ++j) {
-                vertex_index |= (1 << perm[j]);
-            }
-            assert(vertex_index >= 0 && vertex_index < mesh.vertices.size());
-            simplex_verts[i + 1] = mesh.vertices[vertex_index];
+
+    #pragma omp parallel for
+    for(int base_idx = 0; base_idx < verts_size; base_idx++) {
+        bool valid_base = true;
+        for(int j = 0; valid_base && j < D; j++)
+            if(vertices[base_idx]->coefRef(j) == Tp(1)) valid_base = false;
+        if(!valid_base) continue;
+
+        Vector<int, D> base_indices;
+        int idx = base_idx;
+        for(int j = 0; j < D; j++) {
+            base_indices[j] = idx % (divs + 1);
+            idx /= (divs + 1);
         }
-        Element<Tp, D> *simplex = new Element<Tp, D>(Element<Tp, D>::get_simplex(simplex_verts, master));
-        mesh.elements.push_back(simplex);
-    } while (std::next_permutation(perm.begin(), perm.end()));
+
+        std::vector<Vertex<Tp, D>*> cube_verts(1 << D);
+        for(int i = 0; i < (1 << D); i++) {
+            Vector<int, D> vertex_indices = base_indices;
+            for(int j = 0; j < D; j++) {
+                if(i & (1 << j)) vertex_indices[j]++;
+            }
+
+            int idx = 0;
+            for(int j = D-1; j >= 0; j--) {
+                idx = (divs + 1) * idx + vertex_indices[j];
+            }
+            cube_verts[i] = vertices[idx];
+        }
+
+        std::vector<int> perm(D);
+        for (int i = 0; i < D; ++i) perm[i] = i;
+
+        std::vector<Vertex<Tp, D>*> simplex_verts(D+1);
+        do {
+            simplex_verts[0] = cube_verts[0];  
+            for (int i = 0; i < D; ++i) {
+                int vertex_index = 0;
+                for (int j = 0; j <= i; ++j) {
+                    vertex_index |= (1 << perm[j]);
+                }
+                simplex_verts[i + 1] = cube_verts[vertex_index];
+            }
+            Element<Tp, D> *simplex = new Element<Tp, D>(Element<Tp, D>::get_simplex(simplex_verts, master));
+            mesh.elements.push_back(simplex);
+        } while (std::next_permutation(perm.begin(), perm.end()));
+
+    }
 
     return std::move(mesh);
 }
+
+// template <typename Tp, int D>
+// Mesh<Tp, D> Mesh<Tp, D>::get_unit_cube_triangulation() {
+//     Mesh<Tp, D> mesh;
+// 
+//     Vector<Tp, D> coords(D);
+//     for (int i = 0; i < (1 << D); ++i) {
+//         for (int j = 0; j < D; ++j) {
+//             coords[j] = (i & (1 << j)) ? Tp(1) : Tp(0);
+//         }
+//         mesh.vertices.push_back(new Vertex<Tp, D>(coords, i));
+//     }
+// 
+//     std::vector<int> perm(D);
+//     for (int i = 0; i < D; ++i) perm[i] = i;
+// 
+//     Element<Tp, D> master = Element<Tp, D>::get_master_simplex();
+//     std::vector<Vertex<Tp, D>*> simplex_verts(D+1);
+//     do {
+//         simplex_verts[0] = mesh.vertices[0];  
+//         for (int i = 0; i < D; ++i) {
+//             int vertex_index = 0;
+//             for (int j = 0; j <= i; ++j) {
+//                 vertex_index |= (1 << perm[j]);
+//             }
+//             assert(vertex_index >= 0 && vertex_index < mesh.vertices.size());
+//             simplex_verts[i + 1] = mesh.vertices[vertex_index];
+//         }
+//         Element<Tp, D> *simplex = new Element<Tp, D>(Element<Tp, D>::get_simplex(simplex_verts, master));
+//         mesh.elements.push_back(simplex);
+//     } while (std::next_permutation(perm.begin(), perm.end()));
+// 
+//     return std::move(mesh);
+// }
         
 
 #endif /* MESH_HPP */

@@ -9,7 +9,7 @@
 
 #include <math.h>
 
-const int D = 2;
+const int D = 4;
 const long double PI = 3.1415926535;
 
 // -Δu = f_rhs
@@ -33,6 +33,8 @@ long double analytic_solution(Vector<long double, D> point) {
 
 long double l2_error(Mesh<long double, D> &mesh, VectorX<long double> &solution) {
     long double ret = 0.0;
+
+    #pragma omp parallel for
     for(Element<long double, D> *e: mesh.get_elements()) {
         for (const auto &qp : e->get_quadrature_points_rand()) {
             const Vector<long double, D>& xq = qp.first;
@@ -47,10 +49,10 @@ long double l2_error(Mesh<long double, D> &mesh, VectorX<long double> &solution)
             long double u_exact = analytic_solution(xq);
 
             long double diff = u_approx - u_exact;
-            // std::cerr << u_approx << " - " << u_exact << " = " << diff << std::endl;
             ret += wq * diff * diff;
         }
     }
+
     return ret;
 }
 
@@ -59,14 +61,21 @@ int main() {
     LinearForm<long double, D> L(f_rhs);
     BilinearForm<long double, D> B;
 
-    std::cout << "Give the amount of division of the unit cube: ";
+    std::cout << "Give the amount of divisions of the unit cube: ";
     std::cout.flush();
     int divs; std::cin >> divs;
 
-    Mesh<long double, D> mesh(Mesh<long double, D>::get_2d_unit_cube_triangulation(divs));
+    std::cout << "Creating mesh... ";
+    std::cout.flush();
+    Mesh<long double, D> mesh(Mesh<long double, D>::get_unit_cube_triangulation(divs));
+    std::cout << "finished!\nTotal elements: " << mesh.get_elements_size() << std::endl;
+
     EllipticSolver<long double, D> es(&mesh, B, L);
 
-    VectorX<long double> u = es.solve();
+    std::cout << "Assembling and solving system... ";
+    std::cout.flush();
+    VectorX<long double> u = es.assemble_and_solve();
+    std::cout << "finished!" << std::endl;
 
     std::cerr << u << std::endl;
 
